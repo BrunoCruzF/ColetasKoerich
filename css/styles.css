@@ -99,3 +99,7 @@ input.form-control, select.form-select {
 .swal2-styled.swal2-cancel {
   background-color: #dc3545 !important;
 }
+
+/* === Destaque de coletas URGENTES === */
+.urgente-row { border-left: 6px solid #dc3545; }
+.badge.bg-danger { font-weight: 700; letter-spacing: .5px; }
