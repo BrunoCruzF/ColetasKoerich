@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Coletas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+<!--
+    Removemos a classe `navbar-expand-lg` para que a navegação fique sempre
+    colapsada, sendo aberta apenas ao clicar no ícone de três barras. Isso
+    deixa a interface mais limpa em todas as resoluções.
+  -->
+  <nav class="navbar navbar-dark bg-dark mb-4">
+  <div class="container-fluid">
+    <span class="navbar-brand d-flex align-items-center">
+      <img src="logo.png" alt="Logo" height="40" class="me-2" />
+      Coletas KOERICH
+    </span>
+
+    <!-- Botão do menu hamburguer -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarLinks" aria-controls="navbarLinks" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarLinks">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="menu-links"></ul>
+      <span class="navbar-text text-white me-3" id="user-info"></span>
+    </div>
+  </div>
+</nav>
+
+<h2>Coletas Concluídas</h2>
+
+<!-- Barra de busca para filtrar coletas concluídas -->
+<div class="mb-3" style="max-width: 300px;">
+  <input type="text" id="searchInputConcluidas" class="form-control" placeholder="Buscar por produto ou NF">
+</div>
+<table class="table table-bordered mt-4">
+  <thead class="table-light">
+    <tr>
+      <!-- Colunas clicáveis para ordenação -->
+      <th role="button" style="cursor:pointer;" onclick="ordenarConcluidas('produto')">Produto</th>
+      <th role="button" style="cursor:pointer;" onclick="ordenarConcluidas('nf_origem')">NF Origem</th>
+      <th role="button" style="cursor:pointer;" onclick="ordenarConcluidas('nf_devolucao')">NF Devolução</th>
+      <th role="button" style="cursor:pointer;" onclick="ordenarConcluidas('transportadora')">Transportadora</th>
+      <th>Ações</th>
+    </tr>
+  </thead>
+  <tbody id="tabelaConcluidas"></tbody>
+</table>
+
+<!-- Paginação das coletas concluídas -->
+<nav aria-label="Paginação de coletas concluídas" class="mt-3">
+  <ul class="pagination justify-content-center" id="paginationConcluidas"></ul>
+</nav>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="modalConfirmacao" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="formConfirmacao">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar Recebimento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Data de Recebimento</label>
+          <input type="date" name="data_recebimento" class="form-control" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Matrícula do Colaborador</label>
+          <input type="text" name="matricula" class="form-control" required />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <input type="hidden" name="index" />
+        <button type="submit" class="btn btn-success">Confirmar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/menu.js"></script>
+<script>
+  // Recupera o usuário logado. Usamos um nome de variável diferente para
+  // evitar conflito com a constante `user` declarada em menu.js.
+  const currentUser = JSON.parse(localStorage.getItem("usuarioLogado"));
+  // Permite o acesso à página para administradores, operadores e transportadoras.
+  // O usuário "recebimento" agora é do tipo "operador", então removemos a verificação
+  // de nome específico.
+  if (!currentUser || !(currentUser.tipo === "admin" || currentUser.tipo === "operador" || currentUser.tipo === "transportadora")) {
+    Swal.fire("Acesso não autorizado!");
+    window.location.href = "index.html";
+  }
+
+  const tabela = document.getElementById("tabelaConcluidas");
+  // Carrega as coletas concluídas separadas do array principal. Essa lista é preenchida
+  // na tela principal ao concluir uma coleta. Ao receber uma coleta, ela será removida
+  // dessa lista e enviada para retornosKad.
+  let coletasConcluidas = JSON.parse(localStorage.getItem("coletasConcluidas") || "[]");
+  let retornosKad = JSON.parse(localStorage.getItem("retornosKad") || "[]");
+
+  // Variável de filtro para busca
+  let filtroBuscaConcluidas = "";
+
+  // Variáveis para ordenação e paginação das concluidas
+  let currentSortColumnConc = "";
+  let currentSortDirConc = 1;
+  let currentPageConc = 1;
+  const itemsPerPageConc = 10;
+
+  // Função de ordenação chamada ao clicar no cabeçalho
+  window.ordenarConcluidas = function(coluna) {
+    if (currentSortColumnConc === coluna) {
+      currentSortDirConc = -currentSortDirConc;
+    } else {
+      currentSortColumnConc = coluna;
+      currentSortDirConc = 1;
+    }
+    currentPageConc = 1;
+    exibirConcluidas();
+  };
+
+  // Normaliza strings para comparação (remove acentos, espaços e converte para minúsculas)
+  function normalizarTexto(texto) {
+    return texto
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "")
+      .toLowerCase();
+  }
+
+  // Evento de busca: captura o valor digitado e atualiza a tabela
+  const campoBuscaConcluidas = document.getElementById("searchInputConcluidas");
+  if (campoBuscaConcluidas) {
+    campoBuscaConcluidas.addEventListener("input", function () {
+      filtroBuscaConcluidas = this.value.trim().toLowerCase();
+      exibirConcluidas();
+    });
+  }
+
+  function exibirConcluidas() {
+    tabela.innerHTML = "";
+    // Para usuários transportadora, filtrar coletas pela transportadora associada
+    let transportadoraUsuario = null;
+    if (currentUser && currentUser.tipo === "transportadora") {
+      transportadoraUsuario = normalizarTexto(currentUser.nome);
+    }
+    // Monta lista filtrada e armazena o índice real
+    let lista = [];
+    coletasConcluidas.forEach((c, idx) => {
+      // Filtra por transportadora para transportadoras
+      if (transportadoraUsuario) {
+        const transportadoraNormalizada = normalizarTexto(c.transportadora || "");
+        if (transportadoraNormalizada !== transportadoraUsuario) return;
+      }
+      // Filtra por termo de busca
+      const termo = filtroBuscaConcluidas;
+      const atendeFiltro = !termo ||
+        (c.produto && c.produto.toLowerCase().includes(termo)) ||
+        (c.nf_origem && c.nf_origem.toLowerCase().includes(termo)) ||
+        (c.nf_devolucao && c.nf_devolucao.toLowerCase().includes(termo));
+      if (atendeFiltro) {
+        lista.push({ coleta: c, index: idx });
+      }
+    });
+    // Ordenação
+    if (currentSortColumnConc) {
+      lista.sort((a, b) => {
+        const valA = a.coleta[currentSortColumnConc] || "";
+        const valB = b.coleta[currentSortColumnConc] || "";
+        if (valA < valB) return -1 * currentSortDirConc;
+        if (valA > valB) return 1 * currentSortDirConc;
+        return 0;
+      });
+    }
+    // Paginação
+    const totalItems = lista.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPageConc));
+    if (currentPageConc > totalPages) currentPageConc = totalPages;
+    const start = (currentPageConc - 1) * itemsPerPageConc;
+    const pageItems = lista.slice(start, start + itemsPerPageConc);
+    // Exibe a página
+    pageItems.forEach(({ coleta: c, index: globalIndex }) => {
+      const row = document.createElement("tr");
+      const podeConfirmar = currentUser && (currentUser.tipo === "admin" || currentUser.tipo === "operador");
+      row.innerHTML = `
+        <td>${c.produto}</td>
+        <td>${c.comprovante_coleta ? `<a href="${c.comprovante_coleta}" download="${c.nome_comprovante_coleta || 'comprovante'}">${c.nf_origem}</a>` : c.nf_origem}</td>
+        <td>${c.nf_devolucao || ""}</td>
+        <td>${c.transportadora}</td>
+        <td>
+          ${podeConfirmar ? `<button class="btn btn-primary btn-sm" onclick="abrirConfirmacao(${globalIndex})">Confirmar</button>` : ``}
+        </td>
+      `;
+      tabela.appendChild(row);
+    });
+    renderPaginationConcluidas(totalPages);
+  }
+
+  // Renderiza os controles de paginação para coletas concluídas
+  function renderPaginationConcluidas(totalPages) {
+    const pag = document.getElementById("paginationConcluidas");
+    if (!pag) return;
+    pag.innerHTML = "";
+    function criar(pagina, rotulo, desativado = false, ativo = false) {
+      const li = document.createElement("li");
+      li.className = `page-item${desativado ? " disabled" : ""}${ativo ? " active" : ""}`;
+      const a = document.createElement("a");
+      a.className = "page-link";
+      a.href = "#";
+      a.textContent = rotulo;
+      if (!desativado) {
+        a.addEventListener("click", function(e) {
+          e.preventDefault();
+          currentPageConc = pagina;
+          exibirConcluidas();
+        });
+      }
+      li.appendChild(a);
+      return li;
+    }
+    // Anterior
+    pag.appendChild(criar(Math.max(1, currentPageConc - 1), "Anterior", currentPageConc === 1));
+    // Números
+    for (let p = 1; p <= totalPages; p++) {
+      pag.appendChild(criar(p, p, false, p === currentPageConc));
+    }
+    // Próxima
+    pag.appendChild(criar(Math.min(totalPages, currentPageConc + 1), "Próxima", currentPageConc === totalPages));
+  }
+
+  function abrirConfirmacao(index) {
+    const modal = new bootstrap.Modal(document.getElementById("modalConfirmacao"));
+    document.querySelector("#formConfirmacao input[name='index']").value = index;
+    modal.show();
+  }
+
+  document.getElementById("formConfirmacao").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const index = parseInt(this.index.value);
+    const data = this.data_recebimento.value;
+    const matricula = this.matricula.value;
+
+    // Obtém a coleta concluída pelo índice na lista coletasConcluidas
+    const coleta = coletasConcluidas[index];
+
+    // Atualiza dados de recebimento
+    coleta.data_recebimento = data;
+    coleta.matricula = matricula;
+
+    // Remove do array de concluídas e adiciona em retornosKad
+    coletasConcluidas.splice(index, 1);
+    retornosKad.push(coleta);
+
+    // Salva alterações no localStorage
+    localStorage.setItem("coletasConcluidas", JSON.stringify(coletasConcluidas));
+    localStorage.setItem("retornosKad", JSON.stringify(retornosKad));
+
+    Swal.fire('Confirmado!', 'A coleta foi recebida com sucesso.', 'success');
+// Registra log de confirmação de recebimento (se disponível)
+    if (window.registrarLog) {
+      window.registrarLog(`Confirmou recebimento da coleta (NF Origem ${coleta.nf_origem}) da transportadora ${coleta.transportadora}`);
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById("modalConfirmacao")).hide();
+    exibirConcluidas();
+  });
+
+  exibirConcluidas();
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const existentes = JSON.parse(localStorage.getItem("listaTransportadoras") || "[]");
+    const padroes = ["Reunidas", "TJB", "Rede Sul", "Brasil Web", "Zanotelli", "Atual"];
+    let alterado = false;
+    padroes.forEach(t => {
+      if (!existentes.includes(t)) {
+        existentes.push(t);
+        alterado = true;
+      }
+    });
+    if (alterado) {
+      localStorage.setItem("listaTransportadoras", JSON.stringify(existinges));
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - Coletas KOERICH</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body class="bg-light">
+  <div class="container d-flex flex-column justify-content-center align-items-center min-vh-100">
+    <img src="logo.png" alt="Logo" class="mb-4 logo-img" />
+    <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
+      <h4 class="text-center mb-3">Login</h4>
+      <div class="mb-3">
+        <label for="username" class="form-label">Usuário</label>
+        <input type="text" class="form-control" id="username" />
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Senha</label>
+        <input type="password" class="form-control" id="password" />
+      </div>
+      <div id="login-error" class="text-danger mb-3 d-none">Usuário ou senha incorretos</div>
+      <button class="btn btn-primary w-100" onclick="login()">Entrar</button>
+    </div>
+  </div>
+<script>
+  // Ao pressionar Enter em qualquer campo de input, aciona o botão "Entrar"
+  document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector(".card.shadow");
+
+    form.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault(); // Evita recarregar a página
+        login(); // Chama a função já existente
+      }
+    });
+  });
+</script>
+
+  <script src="js/login.js"></script>
+</body>
+</html>

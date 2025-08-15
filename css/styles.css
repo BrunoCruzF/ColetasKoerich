@@ -1,0 +1,101 @@
+
+body {
+  background-color: #f8f9fa;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Logo */
+.logo-img {
+  max-width: 250px;
+}
+
+/* Botões */
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn i {
+  font-size: 0.9em;
+}
+
+/* Botões principais */
+.btn-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-success {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  border-color: #ffc107;
+  color: #212529;
+}
+
+/* Tabelas */
+.table {
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.table th {
+  background-color: #f1f1f1;
+  font-weight: 600;
+}
+
+.table td, .table th {
+  vertical-align: middle !important;
+}
+
+/* Navbar */
+.navbar-brand img {
+  border-radius: 4px;
+}
+
+/* Paginação */
+.pagination .page-link {
+  border-radius: 4px;
+  color: #007bff;
+}
+
+.pagination .active .page-link {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+/* Inputs e selects */
+input.form-control, select.form-select {
+  border-radius: 4px;
+}
+
+/* SweetAlert2 custom */
+.swal2-popup {
+  border-radius: 8px !important;
+  font-size: 1rem !important;
+}
+
+.swal2-title {
+  font-size: 1.2rem !important;
+}
+
+.swal2-styled.swal2-confirm {
+  background-color: #007bff !important;
+}
+
+.swal2-styled.swal2-cancel {
+  background-color: #dc3545 !important;
+}

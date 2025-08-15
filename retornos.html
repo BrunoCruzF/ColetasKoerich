@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Coletas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+<!--
+    Mantemos a navbar colapsada em todas as telas removendo `navbar-expand-lg`,
+    assim o menu só aparece quando o usuário clica no botão de três barras.
+  -->
+  <nav class="navbar navbar-dark bg-dark mb-4">
+  <div class="container-fluid">
+    <span class="navbar-brand d-flex align-items-center fw-bold">
+      <img src="logo.png" alt="Logo" height="40" class="me-2" />
+      Coletas KOERICH
+    </span>
+
+    <!-- Botão do menu hamburguer -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarLinks" aria-controls="navbarLinks" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarLinks">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="menu-links"></ul>
+      <span class="navbar-text text-white me-3" id="user-info"></span>
+    </div>
+  </div>
+</nav>
+
+<h2>Retornos KAD</h2>
+<!-- Campo de busca para filtrar retornos por produto ou NF -->
+<div class="mb-3">
+  <input id="searchInput" type="text" class="form-control" placeholder="Buscar por produto ou NF" />
+</div>
+<table class="table table-bordered table-hover table-sm mt-4">
+  <thead class="table-light">
+    <tr>
+      <!-- Colunas ordenáveis -->
+      <th role="button" style="cursor:pointer;" onclick="ordenarRetornos('produto')">Produto</th>
+      <th role="button" style="cursor:pointer;" onclick="ordenarRetornos('nf_origem')">NF Origem</th>
+      <th role="button" style="cursor:pointer;" onclick="ordenarRetornos('nf_devolucao')">NF Devolução</th>
+      <th role="button" style="cursor:pointer;" onclick="ordenarRetornos('transportadora')">Transportadora</th>
+      <th role="button" style="cursor:pointer;" onclick="ordenarRetornos('data_recebimento')">Data Recebimento</th>
+      <th role="button" style="cursor:pointer;" onclick="ordenarRetornos('matricula')">Matrícula Colaborador</th>
+    </tr>
+  </thead>
+  <tbody id="tabelaRetornos"></tbody>
+</table>
+
+<!-- Navegação de páginas para retornos KAD -->
+<nav aria-label="Paginação de retornos" class="mt-3">
+  <ul class="pagination justify-content-center" id="paginationRetornos"></ul>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/menu.js"></script>
+<script>
+  // Recupera o usuário logado. Renomeamos a variável para evitar conflito
+  // com a constante `user` declarada em menu.js.
+  const currentUser = JSON.parse(localStorage.getItem("usuarioLogado"));
+  // Permitir acesso apenas a administradores e operadores. O usuário "recebimento"
+  // agora é do tipo "operador", então não verificamos mais o nome diretamente.
+  if (!currentUser || (currentUser.tipo !== "admin" && currentUser.tipo !== "operador")) {
+    Swal.fire("Acesso não autorizado!");
+    window.location.href = "index.html";
+  }
+
+  // Carregar e exibir retornos
+  const tabela = document.getElementById("tabelaRetornos");
+  const retornosKad = JSON.parse(localStorage.getItem("retornosKad") || "[]");
+
+  function formatarData(dataISO) {
+    if (!dataISO) return "";
+    const [ano, mes, dia] = dataISO.split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  // Valor atual do filtro de busca. Usado para filtrar retornos por produto ou NF.
+  let filtroBusca = "";
+
+  // Variáveis de ordenação e paginação para retornos
+  let currentSortColumnRet = "";
+  let currentSortDirRet = 1;
+  let currentPageRet = 1;
+  const itemsPerPageRet = 10;
+
+  // Função chamada ao clicar nos cabeçalhos da tabela de retornos para ordenar
+  window.ordenarRetornos = function(coluna) {
+    if (currentSortColumnRet === coluna) {
+      currentSortDirRet = -currentSortDirRet;
+    } else {
+      currentSortColumnRet = coluna;
+      currentSortDirRet = 1;
+    }
+    currentPageRet = 1;
+    exibirRetornos();
+  };
+
+  // Atualiza a variável filtro e redesenha tabela sempre que digitar no campo de busca.
+  const campoBusca = document.getElementById("searchInput");
+  if (campoBusca) {
+    campoBusca.addEventListener("input", function() {
+      filtroBusca = this.value.trim().toLowerCase();
+      exibirRetornos();
+    });
+  }
+
+  function exibirRetornos() {
+    tabela.innerHTML = "";
+    // Filtra retornos de acordo com o termo de busca
+    let lista = retornosKad.filter(coleta => {
+      const termo = filtroBusca;
+      return !termo ||
+        (coleta.produto && coleta.produto.toLowerCase().includes(termo)) ||
+        (coleta.nf_origem && coleta.nf_origem.toLowerCase().includes(termo)) ||
+        (coleta.nf_devolucao && coleta.nf_devolucao.toLowerCase().includes(termo));
+    });
+    // Ordenação se alguma coluna estiver selecionada
+    if (currentSortColumnRet) {
+      lista.sort((a, b) => {
+        const valA = a[currentSortColumnRet] || "";
+        const valB = b[currentSortColumnRet] || "";
+        if (valA < valB) return -1 * currentSortDirRet;
+        if (valA > valB) return 1 * currentSortDirRet;
+        return 0;
+      });
+    }
+    // Paginação
+    const totalItems = lista.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPageRet));
+    if (currentPageRet > totalPages) currentPageRet = totalPages;
+    const start = (currentPageRet - 1) * itemsPerPageRet;
+    const pageItems = lista.slice(start, start + itemsPerPageRet);
+    // Gera linhas da página
+    pageItems.forEach(coleta => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${coleta.produto}</td>
+        <td>${coleta.nf_origem}</td>
+        <td>${coleta.nf_devolucao || ""}</td>
+        <td>${coleta.transportadora}</td>
+        <td>${formatarData(coleta.data_recebimento)}</td>
+        <td>${coleta.matricula}</td>
+      `;
+      tabela.appendChild(row);
+    });
+    renderPaginationRet(totalPages);
+  }
+
+  // Desenha a paginação específica de retornos
+  function renderPaginationRet(totalPages) {
+    const pag = document.getElementById("paginationRetornos");
+    if (!pag) return;
+    pag.innerHTML = "";
+    function criar(pagina, rotulo, desativado = false, ativo = false) {
+      const li = document.createElement("li");
+      li.className = `page-item${desativado ? " disabled" : ""}${ativo ? " active" : ""}`;
+      const a = document.createElement("a");
+      a.className = "page-link";
+      a.href = "#";
+      a.textContent = rotulo;
+      if (!desativado) {
+        a.addEventListener("click", function(e) {
+          e.preventDefault();
+          currentPageRet = pagina;
+          exibirRetornos();
+        });
+      }
+      li.appendChild(a);
+      return li;
+    }
+    // Botão anterior
+    pag.appendChild(criar(Math.max(1, currentPageRet - 1), "Anterior", currentPageRet === 1));
+    // Números
+    for (let p = 1; p <= totalPages; p++) {
+      pag.appendChild(criar(p, p, false, p === currentPageRet));
+    }
+    // Próximo
+    pag.appendChild(criar(Math.min(totalPages, currentPageRet + 1), "Próxima", currentPageRet === totalPages));
+  }
+
+  exibirRetornos();
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const existentes = JSON.parse(localStorage.getItem("listaTransportadoras") || "[]");
+    const padroes = ["Reunidas", "TJB", "Rede Sul", "Brasil Web", "Zanotelli", "Atual"];
+    let alterado = false;
+    padroes.forEach(t => {
+      if (!existentes.includes(t)) {
+        existentes.push(t);
+        alterado = true;
+      }
+    });
+    if (alterado) {
+      localStorage.setItem("listaTransportadoras", JSON.stringify(existinges));
+    }
+  });
+</script>
+
+</body>
+</html>
