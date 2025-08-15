@@ -100,25 +100,21 @@ if (typeof btnExcluir !== "undefined" && btnExcluir) {
 // Captura o IP público do usuário. Utiliza o serviço ipify. Caso a requisição
 // falhe (por exemplo, por falta de internet ou política de CORS), o IP será
 // preenchido como "desconhecido". O resultado é armazenado em ipAtual.
-// 🔒 Captura resiliente do IP público (silencia erros/400 e evita fora de HTTPS)
 let ipAtual = "";
-
-function capturarIP() {
-  // Evita tentativa em ambientes sem HTTPS (ex.: file:// ou http)
-  if (location.protocol !== "https:") {
-    ipAtual = "desconhecido";
-    return;
-  }
-  try {
-    fetch("https://api.ipify.org?format=json", { cache: "no-store" })
-      .then((resp) => resp.ok ? resp.json() : Promise.reject(new Error("ipify not ok")))
-      .then((data) => { ipAtual = data?.ip || "desconhecido"; })
-      .catch(() => { ipAtual = "desconhecido"; });
-  } catch {
-    ipAtual = "desconhecido";
-  }
+try {
+  fetch("https://api.ipify.org?format=json")
+    .then((resp) => resp.json())
+    .then((data) => {
+      ipAtual = data.ip;
+    })
+    .catch(() => {
+      ipAtual = "desconhecido";
+    });
+} catch (e) {
+  ipAtual = "desconhecido";
 }
-capturarIP();// Registra um log no localStorage. O log contém a data/hora, o usuário
+
+// Registra um log no localStorage. O log contém a data/hora, o usuário
 // responsável, a descrição da ação e o IP do dispositivo. A função é
 // exposta globalmente em window para que outras páginas possam utilizá-la.
 function registrarLog(acao) {
@@ -152,6 +148,7 @@ if (form && !form.querySelector('#urgente')) {
   `;
   form.appendChild(divUrg);
 }
+
 const tabela = document.getElementById("tabelaColetas");
 let coletas = JSON.parse(localStorage.getItem("coletas") || "[]");
 
@@ -484,6 +481,7 @@ function editarColeta(index) {
 
 const chkUrg = form.querySelector('#urgente');
 if (chkUrg) chkUrg.checked = !!c.urgente;
+
 }
 
 function formatarData(dataISO) {
