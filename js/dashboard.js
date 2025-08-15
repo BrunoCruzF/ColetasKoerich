@@ -137,6 +137,18 @@ if (user.tipo !== "admin") {
 }
 
 const form = document.getElementById("formColeta");
+
+// === Campo "Urgente" (injetado via JS para evitar mexer no HTML) ===
+if (form && !form.querySelector('#urgente')) {
+  const divUrg = document.createElement('div');
+  divUrg.className = 'col-md-2 form-check';
+  divUrg.innerHTML = `
+    <input class="form-check-input" type="checkbox" id="urgente" name="urgente">
+    <label class="form-check-label" for="urgente">Urgente</label>
+  `;
+  form.appendChild(divUrg);
+}
+
 const tabela = document.getElementById("tabelaColetas");
 let coletas = JSON.parse(localStorage.getItem("coletas") || "[]");
 
@@ -179,7 +191,8 @@ form.addEventListener("submit", async function (e) {
   const formData = new FormData(form);
   // Converte campos simples em objeto
   const dados = Object.fromEntries(formData.entries());
-  // Remove os arquivos da coleta (serão tratados separadamente)
+  dados.urgente = !!(form.querySelector("#urgente") && form.querySelector("#urgente").checked);
+// Remove os arquivos da coleta (serão tratados separadamente)
   delete dados.arquivo_nf_origem;
   delete dados.arquivo_nf_devolucao;
   // Obtenção dos arquivos anexados
@@ -276,9 +289,10 @@ function exibirColetas() {
   // Construção das linhas da página atual
   pageItems.forEach(({ coleta: c, index: i }) => {
     const row = document.createElement("tr");
-    row.innerHTML = `
+    if (c.urgente) { row.classList.add("urgente-row"); }
+row.innerHTML = `
       <td><input type="checkbox" class="checkbox-coleta" data-index="${i}"></td>
-      <td>${c.produto}</td>
+      <td>${c.urgente ? \'<span class="badge bg-danger me-1">URGENTE</span>\' : ""}${c.produto}</td>
       <td>${c.arquivo_nf_origem ? `<a href="${c.arquivo_nf_origem}" download="${c.nome_arquivo_nf_origem}">${c.nf_origem}</a>` : c.nf_origem}</td>
       <td>${c.arquivo_nf_devolucao ? `<a href="${c.arquivo_nf_devolucao}" download="${c.nome_arquivo_nf_devolucao}">${c.nf_devolucao || ""}</a>` : (c.nf_devolucao || "")}</td>
       <td>${formatarData(c.data_solicitacao)}</td>
@@ -464,6 +478,10 @@ function editarColeta(index) {
   form.data_prevista.value = c.data_prevista || "";
   form.status.value = c.status;
   form.transportadora.value = c.transportadora;
+
+const chkUrg = form.querySelector('#urgente');
+if (chkUrg) chkUrg.checked = !!c.urgente;
+
 }
 
 function formatarData(dataISO) {
